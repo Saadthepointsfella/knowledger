@@ -1,0 +1,40 @@
+{
+  "name": "knowledge-resonator-web",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.27.0",
+    "@xenova/transformers": "^2.17.2",
+    "compromise": "^14.14.4",
+    "d3-force": "^3.0.0",
+    "dagre": "^0.8.5",
+    "graphology": "^0.25.4",
+    "graphology-communities-louvain": "^2.0.2",
+    "jszip": "^3.10.1",
+    "nanoid": "^5.0.7",
+    "next": "^14.2.5",
+    "openai": "^4.56.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-force-graph-2d": "^1.29.0",
+    "tslib": "^2.6.3",
+    "tsne-js": "^1.0.3",
+    "zustand": "^4.5.2"
+  },
+  "devDependencies": {
+    "@types/dagre": "^0.7.53",
+    "@types/node": "^20.8.10",
+    "@types/react": "^18.2.21",
+    "@types/react-dom": "^18.2.7",
+    "autoprefixer": "^10.4.17",
+    "eslint": "^8.54.0",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.4.3"
+  }
+}
