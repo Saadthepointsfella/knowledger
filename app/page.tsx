@@ -15,6 +15,7 @@ import { computeCommunityLabels } from "@/lib/labels";
 import { useGraphStore } from "@/state/graphStore";
 import CommunityInspector from "./(components)/CommunityInspector";
 import SimulationPanel from "./(components)/SimulationPanel"; // 🧩 Phase 3
+import { generateEmbeddings, initEmbeddings } from "@/lib/embedClient";
 
 export default function Page() {
   const { upsertFromPhase1 } = useGraphStore();
@@ -42,6 +43,8 @@ export default function Page() {
   });
   const [activeCommunity, setActiveCommunity] = useState<number | null>(null);
   const [labels, setLabels] = useState<Record<number, string> | null>(null);
+  const [modelLoading, setModelLoading] = useState(false);
+  const [modelProgress, setModelProgress] = useState<string | null>(null);
 
   async function run() {
     setLoading(true);
@@ -61,30 +64,31 @@ export default function Page() {
         return;
       }
 
-      const embRes = await fetch("/api/embed", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chunks,
-          model: cfg.embed.model,
-          batchSize: cfg.embed.batchSize,
-        }),
-      });
-      if (!embRes.ok) {
-        if (embRes.status === 413)
-          throw new Error(
-            "Text is too large. Please try with smaller content (≤ ~50k chars)."
-          );
-        const ct = embRes.headers.get("content-type");
-        if (ct?.includes("application/json")) {
-          const j = await embRes.json();
-          throw new Error(j?.error || j?.message || "Embedding request failed");
+      // Initialize model if needed (first time will download ~23MB)
+      setModelLoading(true);
+      setModelProgress("Loading embedding model...");
+      await initEmbeddings((progress) => {
+        if (progress.status === "downloading") {
+          const pct = progress.loaded && progress.total
+            ? Math.round((progress.loaded / progress.total) * 100)
+            : 0;
+          setModelProgress(`Downloading model: ${pct}%`);
+        } else if (progress.status === "loading") {
+          setModelProgress("Loading model into memory...");
         }
-        throw new Error(
-          `Embedding request failed (${embRes.status} ${embRes.statusText})`
-        );
-      }
-      const { embeddings: vecs } = await embRes.json();
+      });
+      setModelLoading(false);
+      setModelProgress(null);
+
+      // Generate embeddings client-side
+      const vecs = await generateEmbeddings(chunks, {
+        batchSize: cfg.embed.batchSize,
+        onProgress: (current, total) => {
+          const pct = Math.round((current / total) * 100);
+          setModelProgress(`Generating embeddings: ${pct}%`);
+        },
+      });
+      setModelProgress(null);
 
       const anRes = await fetch("/api/analyze", {
         method: "POST",
@@ -241,22 +245,9 @@ export default function Page() {
   }, [graph, activeCommunity]);
 
   return (
-    <div className="flex flex-col h-screen w-full bg-black">
-      {/* 🌌 Top Half: Constellation */}
-      <div className="h-1/2 w-full rounded bg-black border-2 border-neutral-800 relative overflow-hidden">
-        {metrics && (
-          <div className="absolute right-4 top-4 z-10">
-            <MetricsBar
-              nodeCount={metrics.nodeCount}
-              edgeCount={metrics.edgeCount}
-              clusters={metrics.clusters}
-              avgSim={metrics.avgSim}
-              RC={metrics.RC}
-              projectionVia={projectionVia}
-            />
-          </div>
-        )}
-
+    <div className="flex h-screen w-full bg-black">
+      {/* 🌌 Main: Constellation (Full Focus) */}
+      <div className="flex-1 relative overflow-hidden">
         {visible ? (
           <ForceGraphWrapper
             key={runVersion}
@@ -264,70 +255,128 @@ export default function Page() {
             labels={labels || undefined}
           />
         ) : (
-          <div className="p-6 text-neutral-400">
-            Paste text and click{" "}
-            <b className="text-white">Resonate</b> to see the semantic constellation.
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center text-neutral-500 max-w-md">
+              <div className="text-xl mb-2">Semantic Constellation</div>
+              <div className="text-sm">
+                Paste your text in the sidebar and click Resonate to visualize
+                the knowledge graph
+              </div>
+            </div>
           </div>
         )}
       </div>
 
-      {/* 🧭 Bottom Half: Controls */}
-      <div className="h-1/2 w-full p-4 overflow-auto bg-black">
-        <div className="max-w-7xl mx-auto grid grid-cols-3 gap-4">
-          {/* ✍️ Left: Input */}
-          <div className="col-span-1 space-y-2">
+      {/* 🎛️ Sidebar: All Controls */}
+      <div className="w-80 bg-neutral-950 border-l border-neutral-800 flex flex-col overflow-hidden">
+        {/* Header with metrics */}
+        <div className="p-4 border-b border-neutral-800">
+          <h1 className="text-[#F5F5DC] text-lg font-light mb-3">
+            Knowledger
+          </h1>
+          {metrics && (
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between text-neutral-400">
+                <span>Nodes</span>
+                <span className="text-neutral-300">{metrics.nodeCount}</span>
+              </div>
+              <div className="flex justify-between text-neutral-400">
+                <span>Edges</span>
+                <span className="text-neutral-300">{metrics.edgeCount}</span>
+              </div>
+              <div className="flex justify-between text-neutral-400">
+                <span>Communities</span>
+                <span className="text-neutral-300">{metrics.clusters}</span>
+              </div>
+              <div className="flex justify-between text-neutral-400">
+                <span>Avg Similarity</span>
+                <span className="text-neutral-300">
+                  {metrics.avgSim.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Input Section */}
+          <div className="space-y-2">
+            <label className="text-xs text-neutral-400 uppercase tracking-wide">
+              Input Text
+            </label>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Paste text here (≤ 50k chars)"
-              className="w-full h-64 p-3 rounded bg-white border-2 border-neutral-800 text-neutral-900"
+              placeholder="Paste your text here..."
+              className="w-full h-32 p-2 text-sm rounded bg-neutral-900 border border-neutral-800 text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-neutral-700 resize-none"
             />
             <button
               onClick={run}
               disabled={!text || loading}
-              className="w-full px-4 py-2 rounded bg-neutral-900 text-[#F5F5DC] hover:bg-neutral-800 disabled:opacity-50 border-2 border-neutral-900"
+              className="w-full px-3 py-2 text-sm rounded bg-neutral-800 text-[#F5F5DC] hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? "Computing…" : "Resonate"}
             </button>
-            {error && <div className="text-sm text-red-600">{error}</div>}
-          </div>
-
-          {/* ⚙️ Middle: Threshold / K */}
-          <div className="col-span-1 space-y-2">
-            <ControlsPanel
-              defaultThreshold={cfg.graph.simThreshold}
-              defaultK={cfg.graph.kDesktop}
-              onChange={onParamsChange}
-            />
-            {/* 🧩 Added Simulation Controls */}
-            {graph && (
-              <div className="mt-3">
-                <SimulationPanel />
-              </div>
+            {modelProgress && (
+              <div className="text-xs text-neutral-500">{modelProgress}</div>
             )}
+            {error && <div className="text-xs text-red-500">{error}</div>}
           </div>
 
-          {/* 🌐 Right: Community Panel + Inspector */}
-          <div className="col-span-1 space-y-3">
-            {graph && (
-              <>
-                <CommunityPanel
-                  nodes={graph.nodes as any}
-                  activeCommunity={activeCommunity}
-                  onSelectCommunity={setActiveCommunity}
-                  labels={labels || undefined}
+          {/* Graph Parameters */}
+          {graph && (
+            <div className="space-y-2">
+              <label className="text-xs text-neutral-400 uppercase tracking-wide">
+                Graph Parameters
+              </label>
+              <ControlsPanel
+                defaultThreshold={cfg.graph.simThreshold}
+                defaultK={cfg.graph.kDesktop}
+                onChange={onParamsChange}
+              />
+            </div>
+          )}
+
+          {/* Simulation Controls */}
+          {graph && (
+            <div className="space-y-2">
+              <label className="text-xs text-neutral-400 uppercase tracking-wide">
+                Simulation
+              </label>
+              <SimulationPanel />
+            </div>
+          )}
+
+          {/* Communities */}
+          {graph && (
+            <div className="space-y-2">
+              <label className="text-xs text-neutral-400 uppercase tracking-wide">
+                Communities
+              </label>
+              <CommunityPanel
+                nodes={graph.nodes as any}
+                activeCommunity={activeCommunity}
+                onSelectCommunity={setActiveCommunity}
+                labels={labels || undefined}
+              />
+            </div>
+          )}
+
+          {/* Community Inspector */}
+          {visible && activeCommunity != null && (
+            <div className="space-y-2">
+              <label className="text-xs text-neutral-400 uppercase tracking-wide">
+                Community Details
+              </label>
+              <div className="rounded border border-neutral-800 p-2 bg-neutral-900">
+                <CommunityInspector
+                  proximityGraph={visible}
+                  communityId={activeCommunity}
                 />
-                {visible && activeCommunity != null && (
-                  <div className="mt-3 rounded border border-neutral-800 p-2">
-                    <CommunityInspector
-                      proximityGraph={visible}
-                      communityId={activeCommunity}
-                    />
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

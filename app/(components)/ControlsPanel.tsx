@@ -20,9 +20,12 @@ export default function ControlsPanel({ defaultThreshold, defaultK, onChange }: 
   };
 
   return (
-    <div className="space-y-4 p-3 rounded bg-neutral-900 border border-neutral-800">
+    <div className="space-y-3">
       <div>
-        <div className="mb-1 text-sm text-white">Similarity threshold</div>
+        <div className="flex justify-between mb-1 text-xs text-neutral-400">
+          <span>Similarity threshold</span>
+          <span className="text-neutral-300">{threshold.toFixed(2)}</span>
+        </div>
         <input
           type="range"
           min={0.6} max={0.9} step={0.01}
@@ -31,13 +34,15 @@ export default function ControlsPanel({ defaultThreshold, defaultK, onChange }: 
             setThreshold(parseFloat(e.target.value));
             setHasChanges(true);
           }}
-          className="w-full"
+          className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-neutral-600"
         />
-        <div className="text-xs text-neutral-300">Current: {threshold.toFixed(2)}</div>
       </div>
 
       <div>
-        <div className="mb-1 text-sm text-white">k (nearest neighbors)</div>
+        <div className="flex justify-between mb-1 text-xs text-neutral-400">
+          <span>k (nearest neighbors)</span>
+          <span className="text-neutral-300">{k}</span>
+        </div>
         <input
           type="range"
           min={3} max={10} step={1}
@@ -46,18 +51,18 @@ export default function ControlsPanel({ defaultThreshold, defaultK, onChange }: 
             setK(parseInt(e.target.value));
             setHasChanges(true);
           }}
-          className="w-full"
+          className="w-full h-1 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-neutral-600"
         />
-        <div className="text-xs text-neutral-300">Current: {k}</div>
       </div>
 
-      <button
-        onClick={handleApply}
-        disabled={!hasChanges}
-        className="w-full px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        Apply Changes
-      </button>
+      {hasChanges && (
+        <button
+          onClick={handleApply}
+          className="w-full px-3 py-1.5 text-xs rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 transition-colors"
+        >
+          Apply Changes
+        </button>
+      )}
     </div>
   );
 }

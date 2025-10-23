@@ -38,62 +38,14 @@ export default function SimulationPanel() {
   }, [epsilon, speedMs, maxTicks, damping, snap, oscOn, sensitivity, setSimParams]);
 
   return (
-    <div className="rounded border border-neutral-800 p-3 text-sm text-neutral-200 space-y-2">
-      <div className="font-semibold">Semantic Equilibrium</div>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="flex items-center justify-between gap-2">
-          <span>ε (stop)</span>
-          <input
-            type="number"
-            step="0.001"
-            value={epsilon}
-            onChange={(e) => setEpsilon(parseFloat(e.target.value || "0"))}
-            className="w-24 bg-neutral-900 border border-neutral-700 rounded px-2 py-1"
-          />
-        </label>
-        <label className="flex items-center justify-between gap-2">
-          <span>Speed (ms/tick)</span>
-          <input
-            type="number"
-            step="1"
-            value={speedMs}
-            onChange={(e) => setSpeedMs(parseInt(e.target.value || "16", 10))}
-            className="w-24 bg-neutral-900 border border-neutral-700 rounded px-2 py-1"
-          />
-        </label>
-        <label className="flex items-center justify-between gap-2">
-          <span>Max ticks</span>
-          <input
-            type="number"
-            step="1"
-            value={maxTicks}
-            onChange={(e) => setMaxTicks(parseInt(e.target.value || "200", 10))}
-            className="w-24 bg-neutral-900 border border-neutral-700 rounded px-2 py-1"
-          />
-        </label>
-        <label className="flex items-center justify-between gap-2">
-          <span>Damping</span>
-          <input
-            type="number"
-            min={0.5}
-            max={0.99}
-            step="0.01"
-            value={damping}
-            onChange={(e) => setDamping(parseFloat(e.target.value || "0.9"))}
-            className="w-24 bg-neutral-900 border border-neutral-700 rounded px-2 py-1"
-          />
-        </label>
-
-        <label className="flex items-center gap-2 col-span-2">
-          <input
-            type="checkbox"
-            checked={snap}
-            onChange={(e) => setSnap(e.target.checked)}
-          />
-          <span>Enable Snapback</span>
-        </label>
+    <div className="space-y-3 text-xs">
+      {/* Status */}
+      <div className="flex justify-between text-neutral-400">
+        <span>Tick: {sim.tick}</span>
+        <span>Tension: {sim.avgTension.toFixed(4)}</span>
       </div>
 
+      {/* Controls */}
       <div className="flex gap-2">
         {!sim.running ? (
           <button
@@ -101,7 +53,7 @@ export default function SimulationPanel() {
               console.log("event.sim.start", sim.params);
               startSim();
             }}
-            className="px-3 py-1 rounded bg-neutral-100 text-neutral-900"
+            className="flex-1 px-2 py-1.5 rounded bg-neutral-800 text-neutral-200 hover:bg-neutral-700 transition-colors"
           >
             Start
           </button>
@@ -111,43 +63,101 @@ export default function SimulationPanel() {
               console.log("event.sim.stop", { tick: sim.tick, avgTension: sim.avgTension });
               stopSim();
             }}
-            className="px-3 py-1 rounded bg-neutral-700"
+            className="flex-1 px-2 py-1.5 rounded bg-neutral-800 text-neutral-200 hover:bg-neutral-700 transition-colors"
           >
             Stop
           </button>
         )}
         {!sim.running && (
-          <button onClick={snapback} className="px-3 py-1 rounded border border-neutral-700">
-            Snapback
+          <button
+            onClick={snapback}
+            className="px-2 py-1.5 rounded bg-neutral-900 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-300 transition-colors"
+          >
+            Reset
           </button>
         )}
       </div>
 
-      <div className="pt-2 border-t border-neutral-800">
-        <div className="font-semibold mb-1">Oscillator Mode</div>
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={oscOn}
-            onChange={(e) => setOscOn(e.target.checked)}
-          />
-          <span>Enable</span>
-        </label>
-        <label className="flex items-center justify-between gap-2 mt-1">
-          <span>Sensitivity</span>
-          <input
-            type="number"
-            step="0.1"
-            value={sensitivity}
-            onChange={(e) => setSensitivity(parseFloat(e.target.value || "1.0"))}
-            className="w-24 bg-neutral-900 border border-neutral-700 rounded px-2 py-1"
-          />
-        </label>
-      </div>
-
-      <div className="text-xs text-neutral-400 mt-2">
-        Tick: {sim.tick} · Avg tension: {sim.avgTension.toFixed(4)}
-      </div>
+      {/* Parameters (collapsible) */}
+      <details className="space-y-2">
+        <summary className="cursor-pointer text-neutral-400 hover:text-neutral-300">
+          Advanced
+        </summary>
+        <div className="pl-2 space-y-2 pt-2">
+          <label className="flex items-center justify-between gap-2">
+            <span className="text-neutral-400">Epsilon</span>
+            <input
+              type="number"
+              step="0.001"
+              value={epsilon}
+              onChange={(e) => setEpsilon(parseFloat(e.target.value || "0"))}
+              className="w-16 bg-neutral-900 border border-neutral-800 rounded px-1.5 py-0.5 text-neutral-200 text-xs"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-2">
+            <span className="text-neutral-400">Speed (ms)</span>
+            <input
+              type="number"
+              step="1"
+              value={speedMs}
+              onChange={(e) => setSpeedMs(parseInt(e.target.value || "16", 10))}
+              className="w-16 bg-neutral-900 border border-neutral-800 rounded px-1.5 py-0.5 text-neutral-200 text-xs"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-2">
+            <span className="text-neutral-400">Max ticks</span>
+            <input
+              type="number"
+              step="1"
+              value={maxTicks}
+              onChange={(e) => setMaxTicks(parseInt(e.target.value || "200", 10))}
+              className="w-16 bg-neutral-900 border border-neutral-800 rounded px-1.5 py-0.5 text-neutral-200 text-xs"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-2">
+            <span className="text-neutral-400">Damping</span>
+            <input
+              type="number"
+              min={0.5}
+              max={0.99}
+              step="0.01"
+              value={damping}
+              onChange={(e) => setDamping(parseFloat(e.target.value || "0.9"))}
+              className="w-16 bg-neutral-900 border border-neutral-800 rounded px-1.5 py-0.5 text-neutral-200 text-xs"
+            />
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={snap}
+              onChange={(e) => setSnap(e.target.checked)}
+              className="accent-neutral-600"
+            />
+            <span className="text-neutral-400">Snapback</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={oscOn}
+              onChange={(e) => setOscOn(e.target.checked)}
+              className="accent-neutral-600"
+            />
+            <span className="text-neutral-400">Oscillator</span>
+          </label>
+          {oscOn && (
+            <label className="flex items-center justify-between gap-2 pl-5">
+              <span className="text-neutral-500">Sensitivity</span>
+              <input
+                type="number"
+                step="0.1"
+                value={sensitivity}
+                onChange={(e) => setSensitivity(parseFloat(e.target.value || "1.0"))}
+                className="w-16 bg-neutral-900 border border-neutral-800 rounded px-1.5 py-0.5 text-neutral-200 text-xs"
+              />
+            </label>
+          )}
+        </div>
+      </details>
     </div>
   );
 }

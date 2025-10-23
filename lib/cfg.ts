@@ -1,6 +1,6 @@
 export const cfg = {
   chunk: { targetChars: 400, overlap: 60, mode: "sentence" as const },
-  embed: { model: "text-embedding-3-small", batchSize: 64, cacheTTLdays: 90, retries: [1,2,4,8] },
+  embed: { model: "text-embedding-3-small", batchSize: 8, cacheTTLdays: 90, retries: [1,2,4,8] },
   project: {
     defaultAlgo: "tsne" as const,
     tsne: { dim: 2, perplexity: 40, iterations: 600, seed: 42, maxClientNodes: 400 },
